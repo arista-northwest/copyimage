@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-import sys
+
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+import functools
 import os
-import ssl
+import sys
+from urllib.parse import urlparse
 
 import eapi
-
-import functools
-import asyncio
-import warnings
-from urllib.parse import urlparse
 #warnings.filterwarnings("ignore")
 
 
@@ -38,6 +36,7 @@ def parse_args():
     parser.add_argument("-s", "--sha512", type=str, required=True,
                         help="Specify sha512 filename for the image")
     parser.add_argument("-r", "--vrf", default="default", type=str)
+    parser.add_argument("-l", "--limit", type=int, default=10, help="Limit concurrent copies")
 
     args = parser.parse_args()
     return args
@@ -52,54 +51,44 @@ def get_sha512(filename):
         lines = [line.split(" ")[0].strip() for line in f]
     return lines[0]
 
-def progress(filename, size, sent):
-    sys.stdout.write("%s\'s progress: %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
+# def progress(filename, size, sent):
+#     sys.stdout.write("%s\'s progress: %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
 
 def image_loaded(sess, name, md5=None):
     response = sess.send(["bash timeout 30 [ -e /mnt/flash/{} ]; echo $?".format(name)], encoding="text")
     
     return True if int(response[0].output.strip()) == 0 else False
 
-async def _aloader(switches, args):
-    loop = asyncio.get_event_loop()
+def _worker(switch, args):
 
-    tasks = []
-    def _blocking(sess, args):
-
-        hostaddr = sess.hostaddr
-        
-        if not image_loaded(sess, args.name):
-            print("{}: {} is not present on flash. Copying...".format(hostaddr, args.name))
-            response = sess.send([
-                "enable",
-                "routing-context vrf {}".format(args.vrf),
-                "copy {} flash:/{}".format(args.image, args.name)
-            ], encoding="json")
-        else:
-            print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
-
-        if not image_loaded(sess, args.name):
-            print("{}: Image is still not present. Something went wrong".format(hostaddr))
-            #sys.exit(0)
-
-        #Verify Copy
-        response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
-        sha512 = str(response[0]).strip().split(" ")[-1]
-
-        if get_sha512(args.sha512) == sha512:
-            print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
-        else:
-            print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
-            # sess.send(["delete flash:{}".format(args.name)])
+    sess = eapi.Session(switch, auth=(args.username, args.password))
     
-    for switch in switches:
-        sess = eapi.Session(switch, auth=(args.username, args.password))
-        part = functools.partial(_blocking, sess, args)
-        tasks.append(loop.run_in_executor(None, part))
+    hostaddr = sess.hostaddr
     
-    completed, _ = await asyncio.wait(tasks)
+    if not image_loaded(sess, args.name):
+        print("{}: {} is not present on flash. Copying...".format(switch, args.name))
+        response = sess.send([
+            "enable",
+            "routing-context vrf {}".format(args.vrf),
+            "copy {} flash:/{}".format(args.image, args.name)
+        ], encoding="json")
+    else:
+        print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
 
-    return [task.result() for task in completed]
+    if not image_loaded(sess, args.name):
+        print("{}: Image is still not present. Something went wrong".format(hostaddr))
+
+    #Verify Copy
+    response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
+    sha512 = str(response[0]).strip().split(" ")[-1]
+
+    if get_sha512(args.sha512) == sha512:
+        print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
+    else:
+        print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
+        # sess.send(["delete flash:{}".format(args.name)])
+    
+    return
     
 def main():
 
@@ -109,13 +98,11 @@ def main():
     if not args.name:
         args.name = os.path.basename(urlparse(args.image).path)
 
-    loop = asyncio.get_event_loop()
-    responses = []
-    for response in loop.run_until_complete(_aloader(switches, args)):
-        responses.append(response)
-
-    return responses
-
+    with ThreadPoolExecutor(max_workers=args.limit) as executor:
+        part = functools.partial(_worker, args=args)
+        for _ in executor.map(part, switches):
+            pass
+    
 if __name__ == "__main__":
     try:
         main()
