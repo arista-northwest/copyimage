@@ -76,22 +76,22 @@ def _worker(switch, args):
             "routing-context vrf {}".format(args.vrf),
             "copy {} flash:/{}".format(args.image, args.name)
         ], encoding="json")
+
+        if not image_loaded(sess, args.name):
+            print("{}: Image is still not present. Something went wrong".format(hostaddr))
+            return
+
+        #Verify Copy
+        response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
+        sha512 = str(response[0]).strip().split(" ")[-1]
+
+        if get_sha512(args.sha512) == sha512:
+            print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
+        else:
+            print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
+            # sess.send(["delete flash:{}".format(args.name)])
     else:
         print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
-
-    if not image_loaded(sess, args.name):
-        print("{}: Image is still not present. Something went wrong".format(hostaddr))
-
-    #Verify Copy
-    response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
-    sha512 = str(response[0]).strip().split(" ")[-1]
-
-    if get_sha512(args.sha512) == sha512:
-        print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
-    else:
-        print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
-        # sess.send(["delete flash:{}".format(args.name)])
-    
     return
     
 def main():
