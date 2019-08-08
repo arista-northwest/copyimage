@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import eapi
 #warnings.filterwarnings("ignore")
 
-__version__ = "0.1.4"
+__version__ = "0.1.6"
 
 def is_valid_file(arg):
     """Checks if a arg is an actual file"""
@@ -66,7 +66,7 @@ def image_loaded(sess, name, md5=None):
 
 def _worker(switch, args):
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=(5, args.timeout))
+    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
 
     hostaddr = sess.hostaddr
     
