@@ -37,6 +37,9 @@ def parse_args():
                         help="Specify sha512 filename for the image")
     parser.add_argument("-r", "--vrf", default="default", type=str)
     parser.add_argument("-l", "--limit", type=int, default=10, help="Limit concurrent copies")
+    parser.add_argument("-t", "--transport", type=str, default="http")
+    parser.add_argument("--verify-ssl-cert", type=str, default="true")
+    parser.add_argument("--ignore-ssl-warnings", action="store_true", default=True)
 
     args = parser.parse_args()
     return args
@@ -61,8 +64,11 @@ def image_loaded(sess, name, md5=None):
 
 def _worker(switch, args):
 
-    sess = eapi.Session(switch, auth=(args.username, args.password))
+    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert)
     
+    if args.ignore_ssl_warnings:
+        eapi.SSL_WARNINGS = False
+
     hostaddr = sess.hostaddr
     
     if not image_loaded(sess, args.name):
@@ -94,6 +100,15 @@ def main():
 
     args = parse_args()
     switches = get_switch_ips(args.filename)
+
+    if args.verify_ssl_cert is "false":
+        args.verify_ssl_cert = False
+    elif args.verify_ssl_cert is "true" or not args.verify_ssl_cert:
+        # default behavior
+        args.verify_ssl_cert = True
+    else:
+        # hopefully it's a valid path to a certificate
+        pass
 
     if not args.name:
         args.name = os.path.basename(urlparse(args.image).path)
