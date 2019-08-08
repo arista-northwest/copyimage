@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument("-l", "--limit", type=int, default=10, help="Limit concurrent copies")
     parser.add_argument("-t", "--transport", type=str, default="http")
     parser.add_argument("--verify-ssl-cert", type=str, default="true")
-    parser.add_argument("--ignore-ssl-warnings", action="store_true", default=True)
+    #parser.add_argument("--ignore-ssl-warnings", action="store_true", default=True)
 
     args = parser.parse_args()
     return args
@@ -66,9 +66,6 @@ def image_loaded(sess, name, md5=None):
 def _worker(switch, args):
 
     sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert)
-    
-    if args.ignore_ssl_warnings:
-        eapi.SSL_WARNINGS = False
 
     hostaddr = sess.hostaddr
     
@@ -102,9 +99,10 @@ def main():
     args = parse_args()
     switches = get_switch_ips(args.filename)
 
-    if args.verify_ssl_cert is "false":
+    if args.verify_ssl_cert == "false":
         args.verify_ssl_cert = False
-    elif args.verify_ssl_cert is "true" or not args.verify_ssl_cert:
+        eapi.SSL_WARNINGS = False
+    elif args.verify_ssl_cert == "true" or not args.verify_ssl_cert:
         # default behavior
         args.verify_ssl_cert = True
     else:
