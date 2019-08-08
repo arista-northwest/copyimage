@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import eapi
 #warnings.filterwarnings("ignore")
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 def is_valid_file(arg):
     """Checks if a arg is an actual file"""
@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument("-l", "--limit", type=int, default=10, help="Limit concurrent copies")
     parser.add_argument("-t", "--transport", type=str, default="http")
     parser.add_argument("--verify-ssl-cert", type=str, default="true")
+    parser.add_argument("--timeout", type=int, default=300)
     #parser.add_argument("--ignore-ssl-warnings", action="store_true", default=True)
 
     args = parser.parse_args()
@@ -65,7 +66,7 @@ def image_loaded(sess, name, md5=None):
 
 def _worker(switch, args):
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=(10, 600))
+    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=(5, args.timeout))
 
     hostaddr = sess.hostaddr
     
@@ -74,7 +75,8 @@ def _worker(switch, args):
         response = sess.send([
             "enable",
             "routing-context vrf {}".format(args.vrf),
-            "copy {} flash:/{}".format(args.image, args.name)
+            "copy {} flash:/{}".format(args.image, args.name),
+            "bash timeout sleep 60"
         ], encoding="json")
 
         if not image_loaded(sess, args.name):
