@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import eapi
 #warnings.filterwarnings("ignore")
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 def is_valid_file(arg):
     """Checks if a arg is an actual file"""
