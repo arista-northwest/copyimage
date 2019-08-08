@@ -65,19 +65,20 @@ def image_loaded(sess, name, md5=None):
 
 def _worker(switch, args):
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert)
+    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=(10, 600))
 
     hostaddr = sess.hostaddr
     
-    if not image_loaded(sess, args.name):
-        print("{}: {} is not present on flash. Copying...".format(switch, args.name))
-        response = sess.send([
-            "enable",
-            "routing-context vrf {}".format(args.vrf),
-            "copy {} flash:/{}".format(args.image, args.name)
-        ], encoding="json")
-    else:
-        print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
+    #if not image_loaded(sess, args.name):
+    print("{}: {} is not present on flash. Copying...".format(switch, args.name))
+    response = sess.send([
+        "enable",
+        "routing-context vrf {}".format(args.vrf),
+        "copy {} flash:/{}".format(args.image, args.name),
+        "bash timeout 60 sleep 45"
+    ], encoding="json")
+    #else:
+    #    print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
 
     if not image_loaded(sess, args.name):
         print("{}: Image is still not present. Something went wrong".format(hostaddr))
