@@ -3,6 +3,8 @@
 Copy EOS images to many switches
 
 ## Usage
+
+```
 usage: copyimage.py [-h] -f FILE [-u USERNAME] [-p PASSWORD] -i IMAGE
                     [-n NAME] -s SHA512 [-r VRF]
 
@@ -20,6 +22,7 @@ optional arguments:
   -s SHA512, --sha512 SHA512
                         Specify sha512 filename for the image
   -r VRF, --vrf VRF
+```
 
 ## Example
 
