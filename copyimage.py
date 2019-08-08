@@ -75,8 +75,7 @@ def _worker(switch, args):
         response = sess.send([
             "enable",
             "routing-context vrf {}".format(args.vrf),
-            "copy {} flash:/{}".format(args.image, args.name),
-            "bash timeout sleep 60"
+            "copy {} flash:/{}".format(args.image, args.name)
         ], encoding="json")
 
         if not image_loaded(sess, args.name):
