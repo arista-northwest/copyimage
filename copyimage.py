@@ -41,7 +41,6 @@ def parse_args():
     parser.add_argument("-t", "--transport", type=str, default="http")
     parser.add_argument("--verify-ssl-cert", type=str, default="true")
     parser.add_argument("--timeout", type=int, default=300)
-    #parser.add_argument("--ignore-ssl-warnings", action="store_true", default=True)
 
     args = parser.parse_args()
     return args
