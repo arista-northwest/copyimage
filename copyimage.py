@@ -8,9 +8,12 @@ import sys
 from urllib.parse import urlparse
 
 import eapi
-#warnings.filterwarnings("ignore")
 
-__version__ = "0.1.9"
+# danger!
+import urllib3
+urllib3.disable_warnings()
+
+__version__ = "0.1.10"
 
 def is_valid_file(arg):
     """Checks if a arg is an actual file"""
