@@ -9,10 +9,6 @@ from urllib.parse import urlparse
 
 import eapi
 
-# danger!
-import urllib3
-urllib3.disable_warnings()
-
 __version__ = "0.1.0"
 
 def is_valid_file(arg):
@@ -84,7 +80,7 @@ def _worker(switch, args):
 
     response = sess.send(list(map(lambda x: "delete flash:%s" % x, cleanup)))
     
-    print("%s: Deleted %d images" % (switch, len(cleanup)))
+    #print("%s: Deleted %d images" % (switch, len(cleanup)))
     return
 
 def main():
