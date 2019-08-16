@@ -63,6 +63,7 @@ def _worker(switch, args):
     
     if "errors" in response[1]:
         print("%s: An error occured: %s" % (hostaddr, response[1]["errors"][0]))
+        return
     
     print("%s: Successfully set '%s' to boot on next reload" % (hostaddr, args.image))
 
