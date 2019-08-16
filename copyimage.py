@@ -67,36 +67,39 @@ def image_loaded(sess, name, md5=None):
     return True if int(response[0].output.strip()) == 0 else False
 
 def _worker(switch, args):
+    try:
+        sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
-
-    hostaddr = sess.hostaddr
-    
-    if not image_loaded(sess, args.name):
-        print("{}: {} is not present on flash. Copying...".format(switch, args.name))
-        response = sess.send([
-            "enable",
-            "routing-context vrf {}".format(args.vrf),
-            "copy {} flash:/{}".format(args.image, args.name)
-        ], encoding="json")
-
+        hostaddr = sess.hostaddr
+        
         if not image_loaded(sess, args.name):
-            print("{}: Image is still not present. Something went wrong".format(hostaddr))
-            return
+            print("{}: {} is not present on flash. Copying...".format(switch, args.name))
+            response = sess.send([
+                "enable",
+                "routing-context vrf {}".format(args.vrf),
+                "copy {} flash:/{}".format(args.image, args.name)
+            ], encoding="json")
 
-        #Verify Copy
-        response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
-        sha512 = str(response[0]).strip().split(" ")[-1]
+            if not image_loaded(sess, args.name):
+                print("{}: Image is still not present. Something went wrong".format(hostaddr))
+                return
 
-        if get_sha512(args.sha512) == sha512:
-            print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
+            #Verify Copy
+            response = sess.send(["verify /sha512 flash:{}".format(args.name)], encoding="text")
+            sha512 = str(response[0]).strip().split(" ")[-1]
+
+            if get_sha512(args.sha512) == sha512:
+                print("{}: SHA512 check passed. Copy Verified.".format(hostaddr))
+            else:
+                print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
+                # sess.send(["delete flash:{}".format(args.name)])
         else:
-            print("{}: SHA512 check failed. Image may be corrupted.".format(hostaddr))
-            # sess.send(["delete flash:{}".format(args.name)])
-    else:
-        print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
-    return
-    
+            print("{}: {} is present on flash. Skipping...".format(hostaddr, args.name))
+        return
+    except OSError as exc:
+        print("%s: %s" % (hostaddr, exc.strerror))
+    except Exception as exc:
+        print("%s: %s" % (hostaddr, str(exc)))
 def main():
 
     args = parse_args()

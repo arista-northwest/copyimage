@@ -45,44 +45,49 @@ def get_switch_ips(filename):
 
 def _worker(switch, args):
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
+    try:
+        sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
 
-    hostaddr = sess.hostaddr
-    response = sess.send(["enable", "show boot-config", "bash timeout 30 ls -1 /mnt/flash/*.swi"], encoding="json")
-    
-    if (response[1]["softwareImage"] == ""):
-        print("{}: Boot image is not set! Aborting")
+        hostaddr = sess.hostaddr
+        response = sess.send(["enable", "show boot-config", "bash timeout 30 ls -1 /mnt/flash/*.swi"], encoding="json")
+        
+        if (response[1]["softwareImage"] == ""):
+            print("{}: Boot image is not set! Aborting")
+            return
+
+        boot = response[1]["softwareImage"].split("/")[-1]
+        print("{}: Boot image is {}".format(switch, boot))
+
+        images = list(map(os.path.basename, response[2]["messages"][0].splitlines()))
+        
+        if len(images) == 0:
+            print("{}: No EOS images found")
+            return
+
+        keep = []
+        cleanup = []
+        for image in images:
+
+            if image == boot:
+                print("{}: Keeping {}".format(switch, image))
+                keep.append(image)
+            else:
+                print("{}: Deleting {}".format(switch, image))
+                cleanup.append(image)
+
+        if not keep:
+            print("{}: did not find any keeper images. Aborting")
+            return
+
+        response = sess.send(list(map(lambda x: "delete flash:%s" % x, cleanup)))
+        
+        if len(cleanup) > 0:
+            print("%s: Deleted %d images" % (switch, len(cleanup)))
         return
-
-    boot = response[1]["softwareImage"].split("/")[-1]
-    print("{}: Boot image is {}".format(switch, boot))
-
-    images = list(map(os.path.basename, response[2]["messages"][0].splitlines()))
-    
-    if len(images) == 0:
-        print("{}: No EOS images found")
-        return
-
-    keep = []
-    cleanup = []
-    for image in images:
-
-        if image == boot:
-            print("{}: Keeping {}".format(switch, image))
-            keep.append(image)
-        else:
-            print("{}: Deleting {}".format(switch, image))
-            cleanup.append(image)
-
-    if not keep:
-        print("{}: did not find any keeper images. Aborting")
-        return
-
-    response = sess.send(list(map(lambda x: "delete flash:%s" % x, cleanup)))
-    
-    if len(cleanup) > 0:
-        print("%s: Deleted %d images" % (switch, len(cleanup)))
-    return
+    except OSError as exc:
+        print("%s: %s" % (hostaddr, exc.strerror))
+    except Exception as exc:
+        print("%s: %s" % (hostaddr, str(exc)))
 
 def main():
 

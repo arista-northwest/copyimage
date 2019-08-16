@@ -50,23 +50,27 @@ def image_loaded(sess, name, md5=None):
     return True if int(response[0].output.strip()) == 0 else False
 
 def _worker(switch, args):
+    try:
+        sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
 
-    sess = eapi.Session(switch, auth=(args.username, args.password), transport=args.transport, verify=args.verify_ssl_cert, timeout=args.timeout)
+        hostaddr = sess.hostaddr
 
-    hostaddr = sess.hostaddr
+        if not image_loaded(sess, args.image):
+            print("%s: Image '%s' is not loaded" % (hostaddr, args.image))
+            return
 
-    if not image_loaded(sess, args.image):
-        print("%s: Image '%s' is not loaded" % (hostaddr, args.image))
-        return
-
-    response = sess.send(["configure", "boot system flash:%s" % args.image])
+        response = sess.send(["configure", "boot system flash:%s" % args.image])
+        
+        if "errors" in response[1]:
+            print("%s: An error occured: %s" % (hostaddr, response[1]["errors"][0]))
+            return
+        
+        print("%s: Successfully set '%s' to boot on next reload" % (hostaddr, args.image))
     
-    if "errors" in response[1]:
-        print("%s: An error occured: %s" % (hostaddr, response[1]["errors"][0]))
-        return
-    
-    print("%s: Successfully set '%s' to boot on next reload" % (hostaddr, args.image))
-
+    except OSError as exc:
+        print("%s: %s" % (hostaddr, exc.strerror))
+    except Exception as exc:
+        print("%s: %s" % (hostaddr, str(exc)))
 def main():
 
     args = parse_args()
