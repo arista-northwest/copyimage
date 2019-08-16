@@ -80,7 +80,8 @@ def _worker(switch, args):
 
     response = sess.send(list(map(lambda x: "delete flash:%s" % x, cleanup)))
     
-    #print("%s: Deleted %d images" % (switch, len(cleanup)))
+    if len(cleanup) > 0:
+        print("%s: Deleted %d images" % (switch, len(cleanup)))
     return
 
 def main():
